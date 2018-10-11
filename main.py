@@ -31,7 +31,7 @@ Flags.DEFINE_string('input_dir_LR', None, 'The directory of the input resolution
 Flags.DEFINE_string('input_dir_HR', None, 'The directory of the high resolution input data')
 Flags.DEFINE_boolean('flip', True, 'Whether random flip data augmentation is applied')
 Flags.DEFINE_boolean('random_crop', True, 'Whether perform the random crop')
-Flags.DEFINE_integer('crop_size', 24, 'The crop size of the training image')
+Flags.DEFINE_string('crop_size', '28,24', 'The crop size of the training image')
 Flags.DEFINE_integer('name_queue_capacity', 2048, 'The capacity of the filename queue (suggest large to ensure'
                                                   'enough random shuffle.')
 Flags.DEFINE_integer('image_queue_capacity', 2048, 'The capacity of the image queue (suggest large to ensure'
