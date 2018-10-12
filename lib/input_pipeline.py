@@ -1,14 +1,14 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
-import tensorflow as tf
 import collections
-import os
-import math
-import scipy.misc as sic
-import numpy as np
 import glob
+import math
+import os
+
+import numpy as np
+import scipy.misc as sic
+import tensorflow as tf
+
 
 # Define the dataloader
 def data_loader(FLAGS):
