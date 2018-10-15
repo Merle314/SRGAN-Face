@@ -7,7 +7,10 @@ import os
 import numpy as np
 import scipy.misc as sic
 import tensorflow as tf
-from lib.ops import batchnorm, conv2, pixelShuffler, prelu_tf
+import tensorflow.contrib.slim as slim
+
+from lib.ops import (batchnorm, conv2, denselayer, lrelu, pixelShuffler,
+                     prelu_tf, subpixel_pre)
 
 
 # Definition of the generator
@@ -20,10 +23,10 @@ def generator(gen_inputs, gen_output_channels, reuse=False, FLAGS=None):
     def residual_block(inputs, output_channel, stride, scope):
         with tf.variable_scope(scope):
             net = conv2(inputs, 3, output_channel, stride, use_bias=False, scope='conv_1')
-            net = batchnorm(net, FLAGS.is_training)
+            # net = batchnorm(net, FLAGS.is_training)
             net = prelu_tf(net)
             net = conv2(net, 3, output_channel, stride, use_bias=False, scope='conv_2')
-            net = batchnorm(net, FLAGS.is_training)
+            # net = batchnorm(net, FLAGS.is_training)
             net = net + inputs
 
         return net
@@ -43,17 +46,19 @@ def generator(gen_inputs, gen_output_channels, reuse=False, FLAGS=None):
 
         with tf.variable_scope('resblock_output'):
             net = conv2(net, 3, 64, 1, use_bias=False, scope='conv')
-            net = batchnorm(net, FLAGS.is_training)
+            # net = batchnorm(net, FLAGS.is_training)
 
         net = net + stage1_output
 
         with tf.variable_scope('subpixelconv_stage1'):
-            net = conv2(net, 3, 256, 1, scope='conv')
+            # net = conv2(net, 3, 256, 1, scope='conv')
+            net = subpixel_pre(net, 64, 256, scope='conv')
             net = pixelShuffler(net, scale=2)
             net = prelu_tf(net)
 
         with tf.variable_scope('subpixelconv_stage2'):
-            net = conv2(net, 3, 256, 1, scope='conv')
+            # net = conv2(net, 3, 256, 1, scope='conv')
+            net = subpixel_pre(net, 64, 256, scope='conv')
             net = pixelShuffler(net, scale=2)
             net = prelu_tf(net)
 
@@ -64,15 +69,12 @@ def generator(gen_inputs, gen_output_channels, reuse=False, FLAGS=None):
 
 
 # Definition of the discriminator
-def discriminator(dis_inputs, FLAGS=None):
-    if FLAGS is None:
-        raise ValueError('No FLAGS is provided for generator')
-
+def discriminator(dis_inputs, is_training=True):
     # Define the discriminator block
     def discriminator_block(inputs, output_channel, kernel_size, stride, scope):
         with tf.variable_scope(scope):
             net = conv2(inputs, kernel_size, output_channel, stride, use_bias=False, scope='conv1')
-            net = batchnorm(net, FLAGS.is_training)
+            net = batchnorm(net, is_training)
             net = lrelu(net, 0.2)
 
         return net
@@ -118,4 +120,3 @@ def discriminator(dis_inputs, FLAGS=None):
                 net = tf.nn.sigmoid(net)
 
     return net
-

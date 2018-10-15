@@ -7,6 +7,9 @@ import os
 import numpy as np
 import scipy.misc as sic
 import tensorflow as tf
+from lib.model_gan import generator, discriminator
+from lib.model_vgg19 import VGG19_slim
+from lib.model_facenet import FaceNet_slim
 
 
 # Define the whole network architecture
@@ -22,17 +25,17 @@ def SRGAN(inputs, targets, FLAGS):
     with tf.variable_scope('generator'):
         output_channel = targets.get_shape().as_list()[-1]
         gen_output = generator(inputs, output_channel, reuse=False, FLAGS=FLAGS)
-        # gen_output.set_shape([FLAGS.batch_size, crop_size[0]*4, crop_size[1]*4, 3])
+        gen_output.set_shape([FLAGS.batch_size, crop_size[0]*4, crop_size[1]*4, 3])
 
     # Build the fake discriminator
     with tf.name_scope('fake_discriminator'):
         with tf.variable_scope('discriminator', reuse=False):
-            discrim_fake_output = discriminator(gen_output, FLAGS=FLAGS)
+            discrim_fake_output = discriminator(gen_output, is_training=True)
 
     # Build the real discriminator
     with tf.name_scope('real_discriminator'):
         with tf.variable_scope('discriminator', reuse=True):
-            discrim_real_output = discriminator(targets, FLAGS=FLAGS)
+            discrim_real_output = discriminator(targets, is_training=True)
 
     # Use the FaceNet feature
     if FLAGS.perceptual_mode == 'FaceNet':

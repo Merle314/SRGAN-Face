@@ -67,7 +67,7 @@ def prelu_tf(inputs, name='Prelu'):
 
 # Define our Lrelu
 def lrelu(inputs, alpha):
-    return keras.layers.LeakyReLU(alpha=alpha).call(inputs)
+    return tf.nn.leaky_relu(inputs, alpha=alpha)
 
 
 def batchnorm(inputs, is_training):
@@ -123,7 +123,6 @@ def random_flip(input, decision):
 # The operation used to print out the configuration
 def print_configuration_op(FLAGS):
     print('[Configurations]:')
-    a = FLAGS.mode
     for name, value in FLAGS.__flags.items():
         if type(value) == float:
             print('\t%s: %f'%(name, value))

@@ -15,7 +15,7 @@ def data_loader(FLAGS):
     with tf.device('/cpu:0'):
         # Define the returned data batches
         Data = collections.namedtuple('Data', 'inputs, targets, image_count, steps_per_epoch')
-        tfrecords_list = glob.glob(FLAGS.input_dir_tfrecord)
+        tfrecords_list = glob.glob(FLAGS.input_dir)
         with tf.variable_scope('load_image'):
             filename_queue = tf.train.string_input_producer(tfrecords_list, shuffle=True)
             with tf.variable_scope('read_parse_preproc'):
@@ -45,7 +45,7 @@ def data_loader(FLAGS):
 
             with tf.variable_scope('random_flip'):
                 # Check for random flip:
-                if (FLAGS.flip is True) and (FLAGS.mode == 'train'):
+                if (FLAGS.flip is True):
                     print('[Config] Use random flip')
                     input_images = tf.image.random_flip_left_right(inputs)
                     target_images = tf.image.random_flip_left_right(targets)
