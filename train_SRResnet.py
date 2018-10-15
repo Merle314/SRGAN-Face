@@ -9,13 +9,13 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from lib.input_pipeline import data_loader
 from lib.ops import print_configuration_op, compute_psnr
-from lib.SRGAN import SRGAN
+from lib.SRResnet import SRResnet
 
 Flags = tf.app.flags
 
 # The system parameter
-Flags.DEFINE_string('output_dir', '/media/lab225/Document2/merle/train_result/gan', 'The output directory of the checkpoint')
-Flags.DEFINE_string('summary_dir', '/media/lab225/Document2/merle/train_result/gan/log', 'The dirctory to output the summary')
+Flags.DEFINE_string('output_dir', '/media/lab225/Document2/merle/train_result/srresnet', 'The output directory of the checkpoint')
+Flags.DEFINE_string('summary_dir', '/media/lab225/Document2/merle/train_result/srresnet/log', 'The dirctory to output the summary')
 Flags.DEFINE_string('checkpoint', None, 'If provided, the weight will be restored from the provided checkpoint')
 Flags.DEFINE_boolean('pre_trained_model', True, 'If set True, the weight will be loaded but the global_step will still '
                                                  'be 0. If set False, you are going to continue the training. That is, '
@@ -41,7 +41,7 @@ Flags.DEFINE_string('perceptual_mode', 'FaceNet', 'VGG54, VGG18, FaceNet, The ty
 Flags.DEFINE_string('perceptual_scope', 'InceptionResnetV1', 'vgg_19, InceptionResnetV1, Resface')
 Flags.DEFINE_float('EPS', 1e-10, 'The eps added to prevent nan')
 Flags.DEFINE_float('ratio', 0.1, 'The ratio between content loss and adversarial loss')
-Flags.DEFINE_float('perceptual_scaling', 0.01, 'The scaling factor for the perceptual loss if using vgg perceptual loss')
+Flags.DEFINE_float('perceptual_scaling', 0.1, 'The scaling factor for the perceptual loss if using vgg perceptual loss')
 # The training parameters
 Flags.DEFINE_float('learning_rate', 0.0001, 'The learning rate for the network')
 Flags.DEFINE_integer('decay_step', 50000, 'The steps needed to decay the learning rate')
@@ -78,7 +78,7 @@ data = data_loader(FLAGS)
 print('Data count = %d' % (data.image_count))
 
 # Connect to the network
-Net = SRGAN(data.inputs, data.targets, FLAGS)
+Net = SRResnet(data.inputs, data.targets, FLAGS)
 print('Finish building the network!!!')
 
 # Convert the images output from the network
@@ -108,28 +108,20 @@ with tf.name_scope('outputs_summary'):
     tf.summary.image('outputs_summary', converted_outputs)
 
 # Add scalar summary
-tf.summary.scalar('discriminator_loss', Net.discrim_loss)
-tf.summary.scalar('adversarial_loss', Net.adversarial_loss)
 tf.summary.scalar('content_loss', Net.content_loss)
-tf.summary.scalar('generator_loss', Net.content_loss + FLAGS.ratio*Net.adversarial_loss)
+tf.summary.scalar('generator_loss', Net.content_loss)
 tf.summary.scalar('PSNR', psnr)
 tf.summary.scalar('learning_rate', Net.learning_rate)
 
 # Define the saver and weight initiallizer
-saver = tf.train.Saver(max_to_keep=1)
+saver = tf.train.Saver(max_to_keep=10)
 
 # The variable list
 var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
 # Here if we restore the weight from the SRResnet the var_list2 do not need to contain the discriminator weights
 # On contrary, if you initial your weight from other SRGAN checkpoint, var_list2 need to contain discriminator
 # weights.
-if FLAGS.pre_trained_model_type == 'SRGAN':
-    var_list2 = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator') + \
-                tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
-elif FLAGS.pre_trained_model_type == 'SRResnet':
-    var_list2 = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
-else:
-    raise ValueError('Unknown pre_trained model type!!')
+var_list2 = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
 
 weight_initiallizer = tf.train.Saver(var_list2)
 
@@ -155,7 +147,7 @@ with sv.managed_session(config=config) as sess:
 
     if not FLAGS.perceptual_mode == 'MSE':
         perceptual_restore.restore(sess, FLAGS.perceptual_ckpt)
-        print('Perceptual model:', FLAGS.perceptual_mode, 'restored successfully!!')
+        print('Perceptual model restored successfully!!')
 
     # Performing the training
     if FLAGS.max_epoch is None:
@@ -175,12 +167,11 @@ with sv.managed_session(config=config) as sess:
         }
 
         if ((step+1) % FLAGS.display_freq) == 0:
-            fetches["discrim_loss"] = Net.discrim_loss
-            fetches["adversarial_loss"] = Net.adversarial_loss
             fetches["content_loss"] = Net.content_loss
             fetches["PSNR"] = psnr
             fetches["learning_rate"] = Net.learning_rate
             fetches["global_step"] = Net.global_step
+
         if ((step+1) % FLAGS.summary_freq) == 0:
             fetches["summary"] = sv.summary_op
 
@@ -198,8 +189,6 @@ with sv.managed_session(config=config) as sess:
             print("progress  epoch %d  step %d  image/sec %0.1f  remaining %dm" % (train_epoch, train_step, rate, remaining / 60))
             print("global_step", results["global_step"])
             print("PSNR", results["PSNR"])
-            print("discrim_loss", results["discrim_loss"])
-            print("adversarial_loss", results["adversarial_loss"])
             print("content_loss", results["content_loss"])
             print("learning_rate", results['learning_rate'])
 

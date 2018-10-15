@@ -79,8 +79,8 @@ def SRGAN(inputs, targets, FLAGS):
 
         with tf.variable_scope('adversarial_loss'):
             adversarial_loss = tf.reduce_mean(-tf.log(discrim_fake_output + FLAGS.EPS))
-
-        gen_loss = content_loss + (FLAGS.ratio)*adversarial_loss
+        # print(tf.get_collection('regular_loss'))
+        gen_loss = content_loss + (FLAGS.ratio)*adversarial_loss# + tf.add_n(tf.get_collection('regular_loss'))
         print(adversarial_loss.get_shape())
         print(content_loss.get_shape())
 

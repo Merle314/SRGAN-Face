@@ -7,21 +7,31 @@ import os
 import numpy as np
 import scipy.misc as sic
 import tensorflow as tf
+from lib.model_gan import generator, discriminator
+from lib.model_vgg19 import VGG19_slim
+from lib.model_facenet import FaceNet_slim
 
 
 def SRResnet(inputs, targets, FLAGS):
     # Define the container of the parameter
+    crop_size = [int(x) for x in FLAGS.crop_size.split(',')]
     Network = collections.namedtuple('Network', 'content_loss, gen_grads_and_vars, gen_output, train, global_step, \
             learning_rate')
-
     # Build the generator part
     with tf.variable_scope('generator'):
         output_channel = targets.get_shape().as_list()[-1]
         gen_output = generator(inputs, output_channel, reuse=False, FLAGS=FLAGS)
-        gen_output.set_shape([FLAGS.batch_size, FLAGS.crop_size * 4, FLAGS.crop_size * 4, 3])
+        gen_output.set_shape([FLAGS.batch_size, crop_size[0]*4, crop_size[1]*4, 3])
+    
+    # Use the FaceNet feature
+    if FLAGS.perceptual_mode == 'FaceNet':
+        with tf.name_scope('FaceNet_1') as scope:
+            extracted_feature_gen = FaceNet_slim(gen_output, FLAGS.perceptual_mode, reuse=False, scope=scope)
+        with tf.name_scope('FaceNet_2') as scope:
+            extracted_feature_target = FaceNet_slim(targets, FLAGS.perceptual_mode, reuse=True, scope=scope)
 
     # Use the VGG54 feature
-    if FLAGS.perceptual_mode == 'VGG54':
+    elif FLAGS.perceptual_mode == 'VGG54':
         with tf.name_scope('vgg19_1') as scope:
             extracted_feature_gen = VGG19_slim(gen_output, FLAGS.perceptual_mode, reuse=False, scope=scope)
         with tf.name_scope('vgg19_2') as scope:
@@ -50,7 +60,7 @@ def SRResnet(inputs, targets, FLAGS):
             if FLAGS.perceptual_mode == 'MSE':
                 content_loss = tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))
             else:
-                content_loss = FLAGS.vgg_scaling * tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))
+                content_loss = FLAGS.perceptual_scaling * tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))
 
         gen_loss = content_loss
 
