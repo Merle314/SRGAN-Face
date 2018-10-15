@@ -21,7 +21,7 @@ Flags.DEFINE_boolean('pre_trained_model', True, 'If set True, the weight will be
                                                  'be 0. If set False, you are going to continue the training. That is, '
                                                  'the global_step will be initiallized from the checkpoint, too')
 Flags.DEFINE_string('pre_trained_model_type', 'SRResnet', 'The type of pretrained model (SRGAN or SRResnet)')
-Flags.DEFINE_string('perceptual_ckpt', './vgg19/vgg_19.ckpt', 'path to checkpoint file for the perceptual model')
+Flags.DEFINE_string('perceptual_ckpt', '/media/lab225/Documents/merle/faceDataSet/Models/20181007-144210/model-20181007-144210.ckpt-79000', 'path to checkpoint file for the perceptual model')
 # The data preparing operation
 Flags.DEFINE_integer('batch_size', 16, 'Batch size of the input batch')
 Flags.DEFINE_string('input_dir', '/media/lab225/Document2/merle/faceDataset/vggface2_align_112x96_tfrecord/*.tfrecord', 'The directory of the input tfrecord data dir')
@@ -37,14 +37,14 @@ Flags.DEFINE_integer('image_count', 200000, 'The total image numbers in tfrecord
 # Generator configuration
 Flags.DEFINE_integer('num_resblock', 16, 'How many residual blocks are there in the generator')
 # The content loss parameter
-Flags.DEFINE_string('perceptual_mode', 'VGG54', 'VGG54, VGG18, FaceNet, The type of feature used in perceptual loss')
-Flags.DEFINE_string('perceptual_scope', 'vgg_19', 'vgg_19, InceptionResnetV1, Resface')
-Flags.DEFINE_float('EPS', 1e-12, 'The eps added to prevent nan')
-Flags.DEFINE_float('ratio', 0.001, 'The ratio between content loss and adversarial loss')
-Flags.DEFINE_float('perceptual_scaling', 0.0061, 'The scaling factor for the perceptual loss if using vgg perceptual loss')
+Flags.DEFINE_string('perceptual_mode', 'FaceNet', 'VGG54, VGG18, FaceNet, The type of feature used in perceptual loss')
+Flags.DEFINE_string('perceptual_scope', 'InceptionResnetV1', 'vgg_19, InceptionResnetV1, Resface')
+Flags.DEFINE_float('EPS', 1e-10, 'The eps added to prevent nan')
+Flags.DEFINE_float('ratio', 0.1, 'The ratio between content loss and adversarial loss')
+Flags.DEFINE_float('perceptual_scaling', 0.01, 'The scaling factor for the perceptual loss if using vgg perceptual loss')
 # The training parameters
-Flags.DEFINE_float('learning_rate', 0.0001, 'The learning rate for the network')
-Flags.DEFINE_integer('decay_step', 500000, 'The steps needed to decay the learning rate')
+Flags.DEFINE_float('learning_rate', 0.00004, 'The learning rate for the network')
+Flags.DEFINE_integer('decay_step', 50000, 'The steps needed to decay the learning rate')
 Flags.DEFINE_float('decay_rate', 0.1, 'The decay rate of each decay step')
 Flags.DEFINE_boolean('stair', True, 'Whether perform staircase decay. True => decay in discrete interval.')
 Flags.DEFINE_float('beta', 0.9, 'The beta1 parameter for the Adam optimizer')
