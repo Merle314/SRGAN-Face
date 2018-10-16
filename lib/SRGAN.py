@@ -40,9 +40,9 @@ def SRGAN(inputs, targets, FLAGS):
     # Use the FaceNet feature
     if FLAGS.perceptual_mode == 'FaceNet':
         with tf.name_scope('FaceNet_1') as scope:
-            extracted_feature_gen = FaceNet_slim(gen_output, FLAGS.perceptual_mode, reuse=False, scope=scope)
+            extracted_emb_gen, extracted_feature_gen = FaceNet_slim(gen_output, FLAGS.perceptual_mode, reuse=False, scope=scope)
         with tf.name_scope('FaceNet_2') as scope:
-            extracted_feature_target = FaceNet_slim(targets, FLAGS.perceptual_mode, reuse=True, scope=scope)
+            extracted_emb_target, extracted_feature_target = FaceNet_slim(targets, FLAGS.perceptual_mode, reuse=True, scope=scope)
 
     # Use the VGG54 feature
     elif FLAGS.perceptual_mode == 'VGG54':
@@ -74,6 +74,9 @@ def SRGAN(inputs, targets, FLAGS):
             diff = extracted_feature_gen - extracted_feature_target
             if FLAGS.perceptual_mode == 'MSE':
                 content_loss = tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))
+            elif FLAGS.perceptual_mode == 'FaceNet':
+                emb_loss = tf.reduce_mean(tf.reduce_sum(tf.square(extracted_emb_gen-extracted_emb_target), axis=[1]))
+                content_loss = FLAGS.perceptual_scaling*tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))+emb_loss
             else:
                 content_loss = FLAGS.perceptual_scaling*tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))
 

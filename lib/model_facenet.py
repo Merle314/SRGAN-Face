@@ -249,7 +249,8 @@ def inception_resnet_v1(inputs, is_training=True,
 def FaceNet_slim(input, type, reuse, scope):
     # Define the feature to extract according to the type of perceptual
     target_layer = 'Mixed_8a'
-    _, output = inference(input, keep_probability=1.0, phase_train=False, 
+    feature, output = inference(input, keep_probability=1.0, phase_train=False, 
               bottleneck_layer_size=512, weight_decay=0.0, reuse=reuse)
+    embeddings = tf.nn.l2_normalize(feature, 1, 1e-10, name='embeddings')
     output = output[target_layer]
-    return output
+    return embeddings, output

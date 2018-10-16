@@ -51,14 +51,14 @@ def generator(gen_inputs, gen_output_channels, reuse=False, FLAGS=None):
         net = net + stage1_output
 
         with tf.variable_scope('subpixelconv_stage1'):
-            # net = conv2(net, 3, 256, 1, scope='conv')
-            net = relate_conv(net, 64, 64, scope='conv')
+            net = conv2(net, 3, 256, 1, scope='conv')
+            # net = relate_conv(net, 64, 64, scope='conv')
             net = pixelShuffler(net, scale=2)
             net = prelu_tf(net)
 
         with tf.variable_scope('subpixelconv_stage2'):
-            # net = conv2(net, 3, 256, 1, scope='conv')
-            net = relate_conv(net, 64, 64, scope='conv')
+            net = conv2(net, 3, 256, 1, scope='conv')
+            # net = relate_conv(net, 64, 64, scope='conv')
             net = pixelShuffler(net, scale=2)
             net = prelu_tf(net)
 

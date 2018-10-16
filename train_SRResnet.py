@@ -6,7 +6,6 @@ import time
 
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
 from lib.input_pipeline import data_loader
 from lib.ops import print_configuration_op, compute_psnr
 from lib.SRResnet import SRResnet
@@ -25,7 +24,7 @@ Flags.DEFINE_string('perceptual_ckpt', '/media/lab225/Documents/merle/faceDataSe
 # The data preparing operation
 Flags.DEFINE_integer('batch_size', 16, 'Batch size of the input batch')
 Flags.DEFINE_string('input_dir', '/media/lab225/Document2/merle/faceDataset/vggface2_align_112x96_tfrecord/*.tfrecord', 'The directory of the input tfrecord data dir')
-Flags.DEFINE_boolean('flip', False, 'Whether random flip data augmentation is applied')
+Flags.DEFINE_boolean('flip', True, 'Whether random flip data augmentation is applied')
 Flags.DEFINE_boolean('random_crop', True, 'Whether perform the random crop')
 Flags.DEFINE_string('crop_size', '28,24', 'The crop size of the training image')
 Flags.DEFINE_integer('name_queue_capacity', 2048, 'The capacity of the filename queue (suggest large to ensure'
@@ -41,7 +40,7 @@ Flags.DEFINE_string('perceptual_mode', 'FaceNet', 'VGG54, VGG18, FaceNet, The ty
 Flags.DEFINE_string('perceptual_scope', 'InceptionResnetV1', 'vgg_19, InceptionResnetV1, Resface')
 Flags.DEFINE_float('EPS', 1e-10, 'The eps added to prevent nan')
 Flags.DEFINE_float('ratio', 0.1, 'The ratio between content loss and adversarial loss')
-Flags.DEFINE_float('perceptual_scaling', 0.1, 'The scaling factor for the perceptual loss if using vgg perceptual loss')
+Flags.DEFINE_float('perceptual_scaling', 0.02, 'The scaling factor for the perceptual loss if using vgg perceptual loss')
 # The training parameters
 Flags.DEFINE_float('learning_rate', 0.0001, 'The learning rate for the network')
 Flags.DEFINE_integer('decay_step', 50000, 'The steps needed to decay the learning rate')
@@ -108,7 +107,9 @@ with tf.name_scope('outputs_summary'):
     tf.summary.image('outputs_summary', converted_outputs)
 
 # Add scalar summary
+print(Net.content_loss, Net.gen_loss)
 tf.summary.scalar('content_loss', Net.content_loss)
+tf.summary.scalar('gen_loss', Net.gen_loss)
 tf.summary.scalar('generator_loss', Net.content_loss)
 tf.summary.scalar('PSNR', psnr)
 tf.summary.scalar('learning_rate', Net.learning_rate)
@@ -168,6 +169,7 @@ with sv.managed_session(config=config) as sess:
 
         if ((step+1) % FLAGS.display_freq) == 0:
             fetches["content_loss"] = Net.content_loss
+            fetches["gen_loss"] = Net.gen_loss
             fetches["PSNR"] = psnr
             fetches["learning_rate"] = Net.learning_rate
             fetches["global_step"] = Net.global_step
@@ -189,6 +191,7 @@ with sv.managed_session(config=config) as sess:
             print("progress  epoch %d  step %d  image/sec %0.1f  remaining %dm" % (train_epoch, train_step, rate, remaining / 60))
             print("global_step", results["global_step"])
             print("PSNR", results["PSNR"])
+            print("gen_loss", results["gen_loss"])
             print("content_loss", results["content_loss"])
             print("learning_rate", results['learning_rate'])
 

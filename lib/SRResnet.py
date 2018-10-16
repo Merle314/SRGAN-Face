@@ -15,7 +15,7 @@ from lib.model_facenet import FaceNet_slim
 def SRResnet(inputs, targets, FLAGS):
     # Define the container of the parameter
     crop_size = [int(x) for x in FLAGS.crop_size.split(',')]
-    Network = collections.namedtuple('Network', 'content_loss, gen_grads_and_vars, gen_output, train, global_step, \
+    Network = collections.namedtuple('Network', 'content_loss, gen_loss, gen_grads_and_vars, gen_output, train, global_step, \
             learning_rate')
     # Build the generator part
     with tf.variable_scope('generator'):
@@ -62,7 +62,7 @@ def SRResnet(inputs, targets, FLAGS):
             else:
                 content_loss = FLAGS.perceptual_scaling * tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))
 
-        gen_loss = content_loss
+        gen_loss = content_loss#  + tf.add_n(tf.get_collection('kernel_constrain'))
 
     # Define the learning rate and global step
     with tf.variable_scope('get_learning_rate_and_global_step'):
@@ -85,6 +85,7 @@ def SRResnet(inputs, targets, FLAGS):
 
     return Network(
         content_loss=exp_averager.average(content_loss),
+        gen_loss=gen_loss,
         gen_grads_and_vars=gen_grads_and_vars,
         gen_output=gen_output,
         train=tf.group(update_loss, incr_global_step, gen_train),

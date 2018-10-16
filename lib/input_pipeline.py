@@ -8,6 +8,7 @@ import os
 import numpy as np
 import scipy.misc as sic
 import tensorflow as tf
+from lib.ops import random_flip
 
 
 # Define the dataloader
@@ -47,8 +48,9 @@ def data_loader(FLAGS):
                 # Check for random flip:
                 if (FLAGS.flip is True):
                     print('[Config] Use random flip')
-                    input_images = tf.image.random_flip_left_right(inputs)
-                    target_images = tf.image.random_flip_left_right(targets)
+                    decision = tf.random_uniform([], 0, 1, dtype=tf.float32)
+                    input_images = random_flip(inputs, decision)
+                    target_images = random_flip(targets, decision)
                 else:
                     input_images = tf.identity(inputs)
                     target_images = tf.identity(targets)

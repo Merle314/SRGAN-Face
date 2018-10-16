@@ -155,14 +155,23 @@ def subpixel_pre(batch_input, input_channel=64, output_channel=256, scope='conv'
     with tf.variable_scope(scope):
         kernel = tf.get_variable('kernel', shape=[3, 3, input_channel, output_channel],
                                  initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
+        # kernel_split = tf.split(kernel, int(output_channel/4), axis=3)
+        # kernel = tf.concat([kernel_norm(x) for x in kernel_split], axis=3)
+
         kernel_split = tf.split(kernel, int(output_channel/4), axis=3)
-        kernel = tf.concat([kernel_norm(x) for x in kernel_split], axis=3)
+        for x in kernel_split:
+            kernel_constrain(x)
         return tf.nn.conv2d(batch_input, kernel, strides=[1, 1, 1, 1], padding='SAME')
 
 def kernel_norm(kernel):
     kernel_mean = tf.reduce_mean(kernel, axis=[0, 1, 3], keep_dims=True)
     kernel_mean_per = tf.reduce_mean(kernel, axis=[0, 1], keep_dims=True)
-    return tf.div(tf.multiply(kernel, kernel_mean), kernel_mean_per)
+    return kernel/kernel_mean_per
+
+def kernel_constrain(kernel):
+    kernel_mean = tf.reduce_mean(kernel, axis=[0, 1, 3], keep_dims=True)
+    kernel_mean_per = tf.reduce_mean(kernel, axis=[0, 1], keep_dims=True)
+    tf.add_to_collection('kernel_constrain', tf.reduce_mean(tf.square(1.0-kernel_mean_per)))
 
 def perchannel_conv(inputs, kernel, input_channel):
     input_split = tf.split(inputs, input_channel, axis=3)
@@ -176,9 +185,9 @@ def relate_conv(batch_input, input_channel=64, output_channel=64, scope='conv'):
     with tf.variable_scope(scope):
         kernel = tf.get_variable('kernel', shape=[output_channel, 5, 5, input_channel],
                                  initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
-        relate_kernel = tf.get_variable('relate_kernel', shape=[2, 2, 1, 1],
-                                        initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
-        # relate_kernel = tf.ones([2, 2, 1, 1])
+        # relate_kernel = tf.get_variable('relate_kernel', shape=[2, 2, 1, 1],
+        #                                 initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
+        relate_kernel = tf.ones([2, 2, 1, 1])
         kernel_1 = tf.pad(kernel, [[0, 0], [0, 1], [0, 1], [0, 0]], "CONSTANT")
         kernel_2 = tf.pad(kernel, [[0, 0], [0, 1], [1, 0], [0, 0]], "CONSTANT")
         kernel_3 = tf.pad(kernel, [[0, 0], [1, 0], [0, 1], [0, 0]], "CONSTANT")
@@ -196,11 +205,10 @@ def relate_conv(batch_input, input_channel=64, output_channel=64, scope='conv'):
 
         kernel_concat = []
         for i in range(output_channel):
-            kernel_nor = kernel_norm(tf.concat([kernel_1_split[i], kernel_2_split[i], kernel_3_split[i], kernel_4_split[i]], axis=3))
-            # kernel_concat = kernel_concat + [kernel_1_split[i], kernel_2_split[i], kernel_3_split[i], kernel_4_split[i]]
-            kernel_concat.append(kernel_nor)
+            # kernel_nor = kernel_norm(tf.concat([kernel_1_split[i], kernel_2_split[i], kernel_3_split[i], kernel_4_split[i]], axis=3))
+            kernel_concat = kernel_concat + [kernel_1_split[i], kernel_2_split[i], kernel_3_split[i], kernel_4_split[i]]
+            # kernel_concat.append(kernel_nor)
         kernel = tf.concat(kernel_concat, axis=3)
         with tf.control_dependencies([kernel]):
             net = tf.nn.conv2d(batch_input, kernel, strides=[1, 1, 1, 1], padding='SAME')
-
         return net
