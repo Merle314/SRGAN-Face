@@ -23,7 +23,7 @@ Flags.DEFINE_boolean('pre_trained_model', True, 'If set True, the weight will be
 Flags.DEFINE_string('pre_trained_model_type', 'SRResnet', 'The type of pretrained model (SRGAN or SRResnet)')
 Flags.DEFINE_string('perceptual_ckpt', '/media/lab225/Documents/merle/faceDataSet/Models/20181007-144210/model-20181007-144210.ckpt-79000', 'path to checkpoint file for the perceptual model')
 # The data preparing operation
-Flags.DEFINE_integer('batch_size', 16, 'Batch size of the input batch')
+Flags.DEFINE_integer('batch_size', 24, 'Batch size of the input batch')
 Flags.DEFINE_string('input_dir', '/media/lab225/Document2/merle/faceDataset/vggface2_align_112x96_tfrecord/*.tfrecord', 'The directory of the input tfrecord data dir')
 Flags.DEFINE_boolean('flip', True, 'Whether random flip data augmentation is applied')
 Flags.DEFINE_boolean('random_crop', True, 'Whether perform the random crop')
@@ -44,7 +44,7 @@ Flags.DEFINE_float('ratio', 1.0, 'The ratio between content loss and adversarial
 Flags.DEFINE_float('perceptual_scaling', 0.04, 'The scaling factor for the perceptual loss if using vgg perceptual loss')
 # The training parameters
 Flags.DEFINE_float('learning_rate', 0.0001, 'The learning rate for the network')
-Flags.DEFINE_integer('decay_step', 100000, 'The steps needed to decay the learning rate')
+Flags.DEFINE_integer('decay_step', 40000, 'The steps needed to decay the learning rate')
 Flags.DEFINE_float('decay_rate', 0.1, 'The decay rate of each decay step')
 Flags.DEFINE_boolean('stair', True, 'Whether perform staircase decay. True => decay in discrete interval.')
 Flags.DEFINE_float('beta', 0.9, 'The beta1 parameter for the Adam optimizer')

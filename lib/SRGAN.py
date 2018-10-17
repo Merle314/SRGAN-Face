@@ -8,6 +8,8 @@ import numpy as np
 import scipy.misc as sic
 import tensorflow as tf
 from lib.model_gan import generator, discriminator
+# from lib.model_dense import generatorDense as generator
+# from lib.model_dense import discriminatorDense as discriminator
 from lib.model_vgg19 import VGG19_slim
 from lib.model_facenet import FaceNet_slim
 
@@ -24,7 +26,7 @@ def SRGAN(inputs, targets, FLAGS):
     # Build the generator part
     with tf.variable_scope('generator'):
         output_channel = targets.get_shape().as_list()[-1]
-        gen_output = generator(inputs, output_channel, reuse=False, FLAGS=FLAGS)
+        gen_output = generator(inputs, output_channel, reuse=False)
         gen_output.set_shape([FLAGS.batch_size, crop_size[0]*4, crop_size[1]*4, 3])
 
     # Build the fake discriminator
@@ -75,8 +77,11 @@ def SRGAN(inputs, targets, FLAGS):
             if FLAGS.perceptual_mode == 'MSE':
                 content_loss = tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))
             elif FLAGS.perceptual_mode == 'FaceNet':
-                emb_loss = tf.reduce_mean(tf.reduce_sum(tf.square(extracted_emb_gen-extracted_emb_target), axis=[1]))
-                content_loss = FLAGS.perceptual_scaling*tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))+emb_loss
+                content_loss_emb = tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.square(extracted_emb_gen-extracted_emb_target), axis=1)))
+                content_loss_feature = FLAGS.perceptual_scaling*tf.reduce_mean(tf.square(diff))
+                content_loss = content_loss_feature + content_loss_emb
+                # emb_loss = tf.reduce_mean(tf.reduce_sum(tf.square(extracted_emb_gen-extracted_emb_target), axis=[1]))
+                # content_loss = FLAGS.perceptual_scaling*tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))+emb_loss
             else:
                 content_loss = FLAGS.perceptual_scaling*tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))
 
