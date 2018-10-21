@@ -14,16 +14,16 @@ from lib.SRGAN_DC import SRGAN
 Flags = tf.app.flags
 
 # The system parameter
-Flags.DEFINE_string('output_dir', '/media/lab225/Document2/merle/train_result/gan_feature', 'The output directory of the checkpoint')
-Flags.DEFINE_string('summary_dir', '/media/lab225/Document2/merle/train_result/gan_feature/log', 'The dirctory to output the summary')
-Flags.DEFINE_string('checkpoint', '/media/lab225/Document2/merle/train_result/gan_face/model-140000', 'If provided, the weight will be restored from the provided checkpoint')
+Flags.DEFINE_string('output_dir', '/media/lab225/Document2/merle/train_result/gan_interconv', 'The output directory of the checkpoint')
+Flags.DEFINE_string('summary_dir', '/media/lab225/Document2/merle/train_result/gan_interconv/log', 'The dirctory to output the summary')
+Flags.DEFINE_string('checkpoint', '/media/lab225/Document2/merle/train_result/gan_feature/model-100000', 'If provided, the weight will be restored from the provided checkpoint')
 Flags.DEFINE_boolean('pre_trained_model', True, 'If set True, the weight will be loaded but the global_step will still '
                                                  'be 0. If set False, you are going to continue the training. That is, '
                                                  'the global_step will be initiallized from the checkpoint, too')
 Flags.DEFINE_string('pre_trained_model_type', 'SRResnet', 'The type of pretrained model (SRGAN or SRResnet)')
 Flags.DEFINE_string('perceptual_ckpt', '/media/lab225/Documents/merle/faceDataSet/Models/20181007-144210/model-20181007-144210.ckpt-79000', 'path to checkpoint file for the perceptual model')
 # The data preparing operation
-Flags.DEFINE_integer('batch_size', 48, 'Batch size of the input batch')
+Flags.DEFINE_integer('batch_size', 64, 'Batch size of the input batch')
 Flags.DEFINE_string('input_dir', '/media/lab225/Document2/merle/faceDataset/celeba_align_112x96_tfrecord/*.tfrecord', 'The directory of the input tfrecord data dir')
 Flags.DEFINE_boolean('flip', True, 'Whether random flip data augmentation is applied')
 Flags.DEFINE_boolean('random_crop', True, 'Whether perform the random crop')
@@ -130,8 +130,8 @@ elif FLAGS.pre_trained_model_type == 'SRResnet':
     var_list_temp = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
     # for var in var_list_temp:
     #     print(var.name)
-    # exclusions = ['generator/generator_unit/subpixelconv_stage1/conv/kernel:0', 'generator/generator_unit/subpixelconv_stage2/conv/kernel:0']
-    exclusions = []
+    exclusions = ['generator/generator_unit/subpixelconv_stage2/conv/interpolation_kernel:0', 'generator/generator_unit/subpixelconv_stage1/conv/interpolation_kernel:0']
+    # exclusions = []
     var_list2 = [v for v in var_list_temp if v.name not in exclusions]
 else:
     raise ValueError('Unknown pre_trained model type!!')

@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
+import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
@@ -218,3 +218,82 @@ def resize_conv(batch_input, input_channel=64, output_channel=64, scope='resize_
     new_size = [original_size[1]*2, original_size[2]*2]
     batch_input = tf.image.resize_nearest_neighbor(batch_input, new_size)
     return conv2(batch_input, kernel=3, output_channel=4, use_bias=False)
+
+
+def rot90(tensor, k=1, axes=[0, 1], name=None):
+    axes = tuple(axes)
+    if len(axes) != 2:
+        raise ValueError("len(axes) must be 2.")
+    tenor_shape = (tensor.get_shape().as_list())
+    dim = len(tenor_shape)
+    if axes[0] == axes[1] or np.absolute(axes[0] - axes[1]) == dim:
+        raise ValueError("Axes must be different.")
+    if (axes[0] >= dim or axes[0] < -dim or axes[1] >= dim or axes[1] < -dim):
+        raise ValueError("Axes={} out of range for tensor of ndim={}.".format(
+            axes, dim))
+    k %= 4
+    if k == 0:
+        return tensor
+    if k == 2:
+        img180 = tf.reverse(
+            tf.reverse(tensor, axis=[axes[0]]), axis=[axes[1]], name=name)
+        return img180
+
+    axes_list = np.arange(0, dim)
+    (axes_list[axes[0]], axes_list[axes[1]]) = (axes_list[axes[1]],
+                                                axes_list[axes[0]])  # 替换
+
+    print(axes_list)
+    if k == 1:
+        img90 = tf.transpose(
+            tf.reverse(tensor, axis=[axes[1]]), perm=axes_list, name=name)
+        return img90
+    if k == 3:
+        img270 = tf.reverse(
+            tf.transpose(tensor, perm=axes_list), axis=[axes[1]], name=name)
+        return img270
+
+def interpolation_kernel(shape, name='interpolation_kernel'):
+    inter_kernel = tf.get_variable(name, shape=[3, 3, 1],
+                    initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
+    # inter_kernel = tf.sqrt(tf.square(inter_kernel))
+    inter_kernel1 = rot90(inter_kernel, axes=[0, 1], k=2)
+    inter_kernel2 = rot90(inter_kernel, axes=[0, 1], k=1)
+    inter_kernel3 = rot90(inter_kernel, axes=[0, 1], k=3)
+    inter_kernel4 = tf.identity(inter_kernel)
+    inter_concat = tf.concat([inter_kernel1, inter_kernel2, inter_kernel3, inter_kernel4], axis=2)
+    inter_kernel = tf.reshape(inter_concat, [3, 2, 3, 2])
+    inter_kernel = tf.transpose(inter_kernel, [0, 2, 1, 3])
+    return tf.reshape(inter_kernel, shape)
+
+# Define the convolution block before the sub_pixel layer
+# [1, 2
+#  3, 4]
+# position is above
+def interpolation_conv(batch_input, input_channel=64, output_channel=64, scope='relate_conv'):
+    with tf.variable_scope(scope):
+        kernel = tf.get_variable('kernel', shape=[output_channel, 5, 5, input_channel],
+                                 initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
+        inter_kernel = interpolation_kernel([6, 6, 1, 1], name='interpolation_kernel')
+        kernel_1 = tf.pad(kernel, [[0, 0], [2, 3], [2, 3], [0, 0]], "SYMMETRIC")
+        kernel_2 = tf.pad(kernel, [[0, 0], [2, 3], [3, 2], [0, 0]], "SYMMETRIC")
+        kernel_3 = tf.pad(kernel, [[0, 0], [3, 2], [2, 3], [0, 0]], "SYMMETRIC")
+        kernel_4 = tf.pad(kernel, [[0, 0], [3, 2], [3, 2], [0, 0]], "SYMMETRIC")
+
+        kernel_1 = tf.transpose(perchannel_conv(kernel_1, inter_kernel, input_channel), [1, 2, 3, 0])
+        kernel_2 = tf.transpose(perchannel_conv(kernel_2, inter_kernel, input_channel), [1, 2, 3, 0])
+        kernel_3 = tf.transpose(perchannel_conv(kernel_3, inter_kernel, input_channel), [1, 2, 3, 0])
+        kernel_4 = tf.transpose(perchannel_conv(kernel_4, inter_kernel, input_channel), [1, 2, 3, 0])
+
+        kernel_1_split = tf.split(kernel_1, output_channel, axis=3)
+        kernel_2_split = tf.split(kernel_2, output_channel, axis=3)
+        kernel_3_split = tf.split(kernel_3, output_channel, axis=3)
+        kernel_4_split = tf.split(kernel_4, output_channel, axis=3)
+
+        kernel_concat = []
+        for i in range(output_channel):
+            kernel_concat = kernel_concat + [kernel_1_split[i], kernel_2_split[i], kernel_3_split[i], kernel_4_split[i]]
+        kernel = tf.concat(kernel_concat, axis=3)
+        with tf.control_dependencies([kernel]):
+            net = tf.nn.conv2d(batch_input, kernel, strides=[1, 1, 1, 1], padding='SAME')
+        return net

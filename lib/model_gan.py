@@ -10,7 +10,7 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
 from lib.ops import (batchnorm, conv2, denselayer, lrelu, pixelShuffler,
-                     prelu_tf, subpixel_pre, relate_conv)
+                     prelu_tf, subpixel_pre, relate_conv, interpolation_conv)
 
 
 # Definition of the generator
@@ -49,14 +49,16 @@ def generator(gen_inputs, gen_output_channels, num_resblock=16, reuse=False, is_
         with tf.variable_scope('subpixelconv_stage1'):
             # net = conv2(net, 3, 256, 1, scope='conv')
             # net = subpixel_pre(net, input_channel=64, output_channel=256, scope='conv')
-            net = relate_conv(net, 64, 64, scope='conv')
+            # net = relate_conv(net, 64, 64, scope='conv')
+            net = interpolation_conv(net, 64, 64, scope='conv')
             net = pixelShuffler(net, scale=2)
             net = prelu_tf(net)
 
         with tf.variable_scope('subpixelconv_stage2'):
             # net = conv2(net, 3, 256, 1, scope='conv')
             # net = subpixel_pre(net, input_channel=64, output_channel=256, scope='conv')
-            net = relate_conv(net, 64, 64, scope='conv')
+            # net = relate_conv(net, 64, 64, scope='conv')
+            net = interpolation_conv(net, 64, 64, scope='conv')
             net = pixelShuffler(net, scale=2)
             net = prelu_tf(net)
 
