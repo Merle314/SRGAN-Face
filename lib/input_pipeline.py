@@ -15,10 +15,12 @@ from lib.ops import random_flip
 def data_loader(FLAGS):
     with tf.device('/cpu:0'):
         # Define the returned data batches
-        Data = collections.namedtuple('Data', 'inputs, targets, image_count, steps_per_epoch')
+        Data = collections.namedtuple(
+            'Data', 'inputs, targets, image_count, steps_per_epoch')
         tfrecords_list = glob.glob(FLAGS.input_dir)
         with tf.variable_scope('load_image'):
-            filename_queue = tf.train.string_input_producer(tfrecords_list, shuffle=True)
+            filename_queue = tf.train.string_input_producer(
+                tfrecords_list, shuffle=True)
             with tf.variable_scope('read_parse_preproc'):
                 reader = tf.TFRecordReader()
                 key, records = reader.read(filename_queue)
@@ -33,16 +35,22 @@ def data_loader(FLAGS):
                         "image_raw": tf.FixedLenFeature([], tf.string)
                     }
                 )
-                input_image_HR = tf.subtract(tf.cast(tf.image.decode_png(features["image_raw"], channels=3), tf.float32), 127.5) * 0.0078125
-                input_image_HR = tf.reshape(input_image_HR, hr_size)  # The image_shape must be explicitly specified
-                input_image_LR = tf.image.resize_images(input_image_HR, lr_size)
-
+                # input_image_HR = tf.image.decode_png(features["image_raw"], channels=3)
+                input_image_HR = tf.decode_raw(features["image_raw"], tf.uint8)
+                # print(input_image_HR)
+                # The image_shape must be explicitly specified
+                input_image_HR = tf.reshape(input_image_HR, hr_size)
+                input_image_LR = tf.cast(tf.image.resize_images(
+                    input_image_HR, lr_size), tf.uint8)
+                input_image_LR = tf.image.convert_image_dtype(
+                    input_image_LR, dtype=tf.float32)
+                input_image_HR = tf.image.convert_image_dtype(
+                    input_image_HR, dtype=tf.float32)
             inputs, targets = [input_image_LR, input_image_HR]
-
         # The data augmentation part
         with tf.name_scope('data_preprocessing'):
-            inputs = tf.identity(inputs)
-            targets = tf.identity(targets)
+            inputs = inputs*2.0-1.0
+            targets = targets*2.0-1.0
 
             with tf.variable_scope('random_flip'):
                 # Check for random flip:
@@ -56,8 +64,8 @@ def data_loader(FLAGS):
                     target_images = tf.identity(targets)
 
         inputs_batch, targets_batch = tf.train.shuffle_batch([input_images, target_images],
-                                        batch_size=FLAGS.batch_size, capacity=FLAGS.image_queue_capacity+4*FLAGS.batch_size,
-                                        min_after_dequeue=FLAGS.image_queue_capacity, num_threads=FLAGS.queue_thread)
+                                                             batch_size=FLAGS.batch_size, capacity=FLAGS.image_queue_capacity+4*FLAGS.batch_size,
+                                                             min_after_dequeue=FLAGS.image_queue_capacity, num_threads=FLAGS.queue_thread)
 
         steps_per_epoch = int(math.ceil(FLAGS.image_count / FLAGS.batch_size))
     return Data(

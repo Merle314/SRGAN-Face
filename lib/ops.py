@@ -155,18 +155,17 @@ def subpixel_pre(batch_input, input_channel=64, output_channel=256, scope='conv'
     with tf.variable_scope(scope):
         kernel = tf.get_variable('kernel', shape=[3, 3, input_channel, output_channel],
                                  initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
-        # kernel_split = tf.split(kernel, int(output_channel/4), axis=3)
-        # kernel = tf.concat([kernel_norm(x) for x in kernel_split], axis=3)
-
         kernel_split = tf.split(kernel, int(output_channel/4), axis=3)
-        for x in kernel_split:
-            kernel_constrain(x)
+        kernel = tf.concat([kernel_norm(x) for x in kernel_split], axis=3)
+        # kernel_split = tf.split(kernel, int(output_channel/4), axis=3)
+        # for x in kernel_split:
+        #     kernel_constrain(x)
         return tf.nn.conv2d(batch_input, kernel, strides=[1, 1, 1, 1], padding='SAME')
 
 def kernel_norm(kernel):
     kernel_mean = tf.reduce_mean(kernel, axis=[0, 1, 3], keep_dims=True)
     kernel_mean_per = tf.reduce_mean(kernel, axis=[0, 1], keep_dims=True)
-    return kernel/kernel_mean_per
+    return kernel/(kernel_mean_per+0.1)
 
 def kernel_constrain(kernel):
     kernel_mean = tf.reduce_mean(kernel, axis=[0, 1, 3], keep_dims=True)
@@ -181,7 +180,7 @@ def perchannel_conv(inputs, kernel, input_channel):
 # [1, 2
 #  3, 4]
 # position is above
-def relate_conv(batch_input, input_channel=64, output_channel=64, scope='conv'):
+def relate_conv(batch_input, input_channel=64, output_channel=64, scope='relate_conv'):
     with tf.variable_scope(scope):
         kernel = tf.get_variable('kernel', shape=[output_channel, 5, 5, input_channel],
                                  initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
@@ -212,3 +211,10 @@ def relate_conv(batch_input, input_channel=64, output_channel=64, scope='conv'):
         with tf.control_dependencies([kernel]):
             net = tf.nn.conv2d(batch_input, kernel, strides=[1, 1, 1, 1], padding='SAME')
         return net
+
+
+def resize_conv(batch_input, input_channel=64, output_channel=64, scope='resize_conv'):
+    original_size = tf.shape(batch_input)
+    new_size = [original_size[1]*2, original_size[2]*2]
+    batch_input = tf.image.resize_nearest_neighbor(batch_input, new_size)
+    return conv2(batch_input, kernel=3, output_channel=4, use_bias=False)

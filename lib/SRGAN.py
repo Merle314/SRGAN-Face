@@ -78,7 +78,7 @@ def SRGAN(inputs, targets, FLAGS):
                 content_loss = tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))
             elif FLAGS.perceptual_mode == 'FaceNet':
                 content_loss_emb = tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.square(extracted_emb_gen-extracted_emb_target), axis=1)))
-                content_loss_feature = FLAGS.perceptual_scaling*tf.reduce_mean(tf.square(diff))
+                content_loss_feature = FLAGS.perceptual_scaling*tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))
                 content_loss = content_loss_feature + content_loss_emb
                 # emb_loss = tf.reduce_mean(tf.reduce_sum(tf.square(extracted_emb_gen-extracted_emb_target), axis=[1]))
                 # content_loss = FLAGS.perceptual_scaling*tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))+emb_loss
@@ -87,17 +87,18 @@ def SRGAN(inputs, targets, FLAGS):
 
         with tf.variable_scope('adversarial_loss'):
             adversarial_loss = tf.reduce_mean(-tf.log(discrim_fake_output + FLAGS.EPS))
+            # adversarial_loss = tf.reduce_mean(tf.square(discrim_fake_output))
         # print(tf.get_collection('regular_loss'))
         gen_loss = content_loss + (FLAGS.ratio)*adversarial_loss# + tf.add_n(tf.get_collection('regular_loss'))
-        print(adversarial_loss.get_shape())
-        print(content_loss.get_shape())
 
     # Calculating the discriminator loss
     with tf.variable_scope('discriminator_loss'):
         discrim_fake_loss = tf.log(1 - discrim_fake_output + FLAGS.EPS)
         discrim_real_loss = tf.log(discrim_real_output + FLAGS.EPS)
-
         discrim_loss = tf.reduce_mean(-(discrim_fake_loss + discrim_real_loss))
+        # discrim_fake_loss = tf.square(discrim_fake_output+1)
+        # discrim_real_loss = tf.square(discrim_real_output-1)
+        # discrim_loss = tf.reduce_mean(discrim_fake_loss) + tf.reduce_mean(discrim_real_loss)
 
     # Define the learning rate and global step
     with tf.variable_scope('get_learning_rate_and_global_step'):

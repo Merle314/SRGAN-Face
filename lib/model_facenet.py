@@ -174,7 +174,6 @@ def inception_resnet_v1(inputs, is_training=True,
                             is_training=is_training):
             with slim.arg_scope([slim.conv2d, slim.max_pool2d, slim.avg_pool2d],
                                 stride=1, padding='SAME'):
-      
                 # 149 x 149 x 32
                 net = slim.conv2d(inputs, 32, 3, stride=2, padding='VALID',
                                   scope='Conv2d_1a_3x3')
@@ -242,13 +241,12 @@ def inception_resnet_v1(inputs, is_training=True,
                 
                 net = slim.fully_connected(net, bottleneck_layer_size, activation_fn=None, 
                         scope='Bottleneck', reuse=False)
-  
     return net, end_points
 
 
 def FaceNet_slim(input, type, reuse, scope):
     # Define the feature to extract according to the type of perceptual
-    target_layer = 'Mixed_8a'
+    target_layer = 'Conv2d_4a_3x3'
     feature, output = inference(input, keep_probability=1.0, phase_train=False, 
               bottleneck_layer_size=512, weight_decay=0.0, reuse=reuse)
     embeddings = tf.nn.l2_normalize(feature, 1, 1e-10, name='embeddings')
