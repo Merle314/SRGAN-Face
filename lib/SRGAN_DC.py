@@ -7,7 +7,7 @@ import os
 import numpy as np
 import scipy.misc as sic
 import tensorflow as tf
-from lib.model_gan import generator, discriminator
+from lib.model_gan import generator, discriminator, discriminator_feature
 # from lib.model_dense import generatorDense as generator
 # from lib.model_dense import discriminatorDense as discriminator
 from lib.model_vgg19 import VGG19_slim
@@ -28,16 +28,6 @@ def SRGAN(inputs, targets, FLAGS):
         output_channel = targets.get_shape().as_list()[-1]
         gen_output = generator(inputs, output_channel, reuse=False)
         gen_output.set_shape([FLAGS.batch_size, crop_size[0]*4, crop_size[1]*4, 3])
-
-    # Build the fake discriminator
-    with tf.name_scope('fake_discriminator'):
-        with tf.variable_scope('discriminator', reuse=False):
-            discrim_fake_output = discriminator(gen_output, is_training=True)
-
-    # Build the real discriminator
-    with tf.name_scope('real_discriminator'):
-        with tf.variable_scope('discriminator', reuse=True):
-            discrim_real_output = discriminator(targets, is_training=True)
 
     # Use the FaceNet feature
     if FLAGS.perceptual_mode == 'FaceNet':
@@ -67,6 +57,16 @@ def SRGAN(inputs, targets, FLAGS):
 
     else:
         raise NotImplementedError('Unknown perceptual type!!')
+    
+    # Build the fake discriminator
+    with tf.name_scope('fake_discriminator'):
+        with tf.variable_scope('discriminator', reuse=False):
+            discrim_fake_output = discriminator_feature(extracted_feature_gen, is_training=True)
+
+    # Build the real discriminator
+    with tf.name_scope('real_discriminator'):
+        with tf.variable_scope('discriminator', reuse=True):
+            discrim_real_output = discriminator_feature(extracted_feature_target, is_training=True)
 
     # Calculating the generator loss
     with tf.variable_scope('generator_loss'):
@@ -102,8 +102,7 @@ def SRGAN(inputs, targets, FLAGS):
 
     # Define the learning rate and global step
     with tf.variable_scope('get_learning_rate_and_global_step'):
-        # global_step = tf.contrib.framework.get_or_create_global_step()
-        global_step = tf.train.get_or_create_global_step()
+        global_step = tf.contrib.framework.get_or_create_global_step()
         learning_rate = tf.train.exponential_decay(FLAGS.learning_rate, global_step, FLAGS.decay_step, FLAGS.decay_rate, staircase=FLAGS.stair)
         incr_global_step = tf.assign(global_step, global_step + 1)
 
