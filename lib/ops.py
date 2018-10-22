@@ -184,8 +184,6 @@ def relate_conv(batch_input, input_channel=64, output_channel=64, scope='relate_
     with tf.variable_scope(scope):
         kernel = tf.get_variable('kernel', shape=[output_channel, 5, 5, input_channel],
                                  initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
-        # relate_kernel = tf.get_variable('relate_kernel', shape=[2, 2, 1, 1],
-        #                                 initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
         relate_kernel = tf.ones([2, 2, 1, 1])
         kernel_1 = tf.pad(kernel, [[0, 0], [0, 1], [0, 1], [0, 0]], "CONSTANT")
         kernel_2 = tf.pad(kernel, [[0, 0], [0, 1], [1, 0], [0, 0]], "CONSTANT")
@@ -256,13 +254,14 @@ def rot90(tensor, k=1, axes=[0, 1], name=None):
 def interpolation_kernel(shape, name='interpolation_kernel'):
     inter_kernel = tf.get_variable(name, shape=[3, 3, 1],
                     initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
-    # inter_kernel = tf.sqrt(tf.square(inter_kernel))
+    # inter_kernel = tf.abs(inter_kernel)
+    # inter_kernel = tf.constant([[[0], [0], [0]], [[0], [1], [0]], [[0], [0], [0]]], dtype=tf.float32)
     inter_kernel1 = rot90(inter_kernel, axes=[0, 1], k=2)
     inter_kernel2 = rot90(inter_kernel, axes=[0, 1], k=1)
     inter_kernel3 = rot90(inter_kernel, axes=[0, 1], k=3)
     inter_kernel4 = tf.identity(inter_kernel)
     inter_concat = tf.concat([inter_kernel1, inter_kernel2, inter_kernel3, inter_kernel4], axis=2)
-    inter_kernel = tf.reshape(inter_concat, [3, 2, 3, 2])
+    inter_kernel = tf.reshape(inter_concat, [3, 3, 2, 2])
     inter_kernel = tf.transpose(inter_kernel, [0, 2, 1, 3])
     return tf.reshape(inter_kernel, shape)
 

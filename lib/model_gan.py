@@ -49,22 +49,22 @@ def generator(gen_inputs, gen_output_channels, num_resblock=16, reuse=False, is_
         with tf.variable_scope('subpixelconv_stage1'):
             # net = conv2(net, 3, 256, 1, scope='conv')
             # net = subpixel_pre(net, input_channel=64, output_channel=256, scope='conv')
-            # net = relate_conv(net, 64, 64, scope='conv')
-            net = interpolation_conv(net, 64, 64, scope='conv')
+            net = relate_conv(net, 64, 64, scope='conv')
+            # net = interpolation_conv(net, 64, 64, scope='conv')
             net = pixelShuffler(net, scale=2)
             net = prelu_tf(net)
 
         with tf.variable_scope('subpixelconv_stage2'):
             # net = conv2(net, 3, 256, 1, scope='conv')
             # net = subpixel_pre(net, input_channel=64, output_channel=256, scope='conv')
-            # net = relate_conv(net, 64, 64, scope='conv')
-            net = interpolation_conv(net, 64, 64, scope='conv')
+            net = relate_conv(net, 64, 64, scope='conv')
+            # net = interpolation_conv(net, 64, 64, scope='conv')
             net = pixelShuffler(net, scale=2)
             net = prelu_tf(net)
 
         with tf.variable_scope('output_stage'):
             net = conv2(net, 9, gen_output_channels, 1, scope='conv')
-            # net = tf.nn.tanh(net)
+            net = tf.nn.tanh(net)
 
     return net
 
@@ -150,6 +150,41 @@ def discriminator_feature(dis_features, is_training=True):
         with tf.variable_scope('dense_layer_1'):
             net = slim.flatten(net)
             net = denselayer(net, 1024)
+            net = lrelu(net, 0.2)
+
+        # The dense layer 2
+        with tf.variable_scope('dense_layer_2'):
+            net = denselayer(net, 1)
+            net = tf.nn.sigmoid(net)
+
+    return net
+
+# Definition of the discriminator use feature
+def discriminator_emb(dis_embeddings, is_training=True):
+    # Define the discriminator block
+    def discriminator_block(inputs, output_channel, scope):
+        with tf.variable_scope(scope):
+            net = denselayer(inputs, output_channel)
+            net = lrelu(net, 0.2)
+        return net
+
+    with tf.variable_scope('discriminator_unit'):
+        # The discriminator block part
+        # block 1
+        net = discriminator_block(dis_embeddings, 1024, 'disblock_1')
+
+        # block 2
+        net = discriminator_block(net, 1024, 'disblock_2')
+
+        # block 3
+        net = discriminator_block(net, 512, 'disblock_3')
+
+        # block 4
+        net = discriminator_block(net, 512, 'disblock_4')
+
+        # The dense layer 1
+        with tf.variable_scope('dense_layer_1'):
+            net = denselayer(net, 128)
             net = lrelu(net, 0.2)
 
         # The dense layer 2

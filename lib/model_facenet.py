@@ -233,7 +233,7 @@ def inception_resnet_v1(inputs, is_training=True,
                     net = slim.avg_pool2d(net, net.get_shape()[1:3], padding='VALID',
                                           scope='AvgPool_1a_8x8')
                     net = slim.flatten(net)
-          
+                    end_points['Flatten'] = net
                     net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
                                        scope='Dropout')
           
@@ -246,7 +246,7 @@ def inception_resnet_v1(inputs, is_training=True,
 
 def FaceNet_slim(input, type, reuse, scope):
     # Define the feature to extract according to the type of perceptual
-    target_layer = 'Conv2d_4a_3x3'
+    target_layer = 'Flatten'
     feature, output = inference(input, keep_probability=1.0, phase_train=False, 
               bottleneck_layer_size=512, weight_decay=0.0, reuse=reuse)
     embeddings = tf.nn.l2_normalize(feature, 1, 1e-10, name='embeddings')
