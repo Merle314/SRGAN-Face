@@ -61,12 +61,12 @@ def SRGAN(inputs, targets, FLAGS):
     # Build the fake discriminator
     with tf.name_scope('fake_discriminator'):
         with tf.variable_scope('discriminator', reuse=False):
-            discrim_fake_output = discriminator_emb(extracted_feature_gen, is_training=True)
+            discrim_fake_output = discriminator_feature(extracted_feature_gen, is_training=True)
 
     # Build the real discriminator
     with tf.name_scope('real_discriminator'):
         with tf.variable_scope('discriminator', reuse=True):
-            discrim_real_output = discriminator_emb(extracted_feature_target, is_training=True)
+            discrim_real_output = discriminator_feature(extracted_feature_target, is_training=True)
 
     # Calculating the generator loss
     with tf.variable_scope('generator_loss'):
@@ -78,7 +78,7 @@ def SRGAN(inputs, targets, FLAGS):
                 content_loss = tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))
             elif FLAGS.perceptual_mode == 'FaceNet':
                 content_loss_emb = tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.square(extracted_emb_gen-extracted_emb_target), axis=1)))
-                content_loss_feature = FLAGS.perceptual_scaling*tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[1]))
+                content_loss_feature = FLAGS.perceptual_scaling*tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))
                 content_loss = content_loss_feature + content_loss_emb
                 # emb_loss = tf.reduce_mean(tf.reduce_sum(tf.square(extracted_emb_gen-extracted_emb_target), axis=[1]))
                 # content_loss = FLAGS.perceptual_scaling*tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))+emb_loss

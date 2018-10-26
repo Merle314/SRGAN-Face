@@ -24,7 +24,6 @@ def generator(gen_inputs, gen_output_channels, num_resblock=16, reuse=False, is_
             net = conv2(net, 3, output_channel, stride, use_bias=False, scope='conv_2')
             # net = batchnorm(net, is_training)
             net = net + inputs
-
         return net
 
     with tf.variable_scope('generator_unit', reuse=reuse):
@@ -32,40 +31,82 @@ def generator(gen_inputs, gen_output_channels, num_resblock=16, reuse=False, is_
         with tf.variable_scope('input_stage'):
             net = conv2(gen_inputs, 9, 64, 1, scope='conv')
             net = prelu_tf(net)
-
         stage1_output = net
-
         # The residual block parts
         for i in range(1, num_resblock+1 , 1):
             name_scope = 'resblock_%d'%(i)
             net = residual_block(net, 64, 1, name_scope)
-
         with tf.variable_scope('resblock_output'):
             net = conv2(net, 3, 64, 1, use_bias=False, scope='conv')
             # net = batchnorm(net, is_training)
-
         net = net + stage1_output
-
         with tf.variable_scope('subpixelconv_stage1'):
             # net = conv2(net, 3, 256, 1, scope='conv')
             # net = subpixel_pre(net, input_channel=64, output_channel=256, scope='conv')
-            net = relate_conv(net, 64, 64, scope='conv')
-            # net = interpolation_conv(net, 64, 64, scope='conv')
+            # net = relate_conv(net, 64, 64, scope='conv')
+            net = interpolation_conv(net, 64, 64, scope='conv')
             net = pixelShuffler(net, scale=2)
             net = prelu_tf(net)
-
         with tf.variable_scope('subpixelconv_stage2'):
             # net = conv2(net, 3, 256, 1, scope='conv')
             # net = subpixel_pre(net, input_channel=64, output_channel=256, scope='conv')
-            net = relate_conv(net, 64, 64, scope='conv')
-            # net = interpolation_conv(net, 64, 64, scope='conv')
+            # net = relate_conv(net, 64, 64, scope='conv')
+            net = interpolation_conv(net, 64, 64, scope='conv')
             net = pixelShuffler(net, scale=2)
             net = prelu_tf(net)
-
         with tf.variable_scope('output_stage'):
             net = conv2(net, 9, gen_output_channels, 1, scope='conv')
             net = tf.nn.tanh(net)
+    return net
 
+# Definition of the generator
+def generator_split(gen_inputs, gen_output_channels, num_resblock=16, reuse=False, is_training=None):
+    # The Bx residual blocks
+    def residual_block(inputs, output_channel, stride, scope):
+        with tf.variable_scope(scope):
+            net = conv2(inputs, 3, output_channel, stride, use_bias=False, scope='conv_1')
+            net = prelu_tf(net)
+            net = conv2(net, 3, output_channel, stride, use_bias=False, scope='conv_2')
+            net = net + inputs
+        return net
+    with tf.variable_scope('generator_unit', reuse=reuse):
+        # The input layer
+        with tf.variable_scope('input_stage'):
+            net = conv2(gen_inputs, 9, 64, 1, scope='conv')
+            net = prelu_tf(net)
+        stage1_output = net
+        # The residual block parts
+        for i in range(1, num_resblock+1 , 1):
+            name_scope = 'resblock_%d'%(i)
+            net = residual_block(net, 64, 1, name_scope)
+        with tf.variable_scope('resblock_output'):
+            net = conv2(net, 3, 64, 1, use_bias=False, scope='conv')
+        net = net + stage1_output
+    inputs_top = tf.slice(net, [0, 0, 0, 0], [-1, 17, -1, -1])
+    inputs_down = tf.slice(net, [0, 15, 0, 0], [-1, -1, -1, -1])
+    with tf.variable_scope('generator_unit_1', reuse=reuse):
+        with tf.variable_scope('subpixelconv_stage1'):
+            net = relate_conv(inputs_top, 64, 64, scope='conv')
+            net = pixelShuffler(net, scale=2)
+            net = prelu_tf(net)
+        with tf.variable_scope('subpixelconv_stage2'):
+            net = relate_conv(net, 64, 64, scope='conv')
+            net = pixelShuffler(net, scale=2)
+            net_top = prelu_tf(net)
+    with tf.variable_scope('generator_unit_2', reuse=reuse):
+        with tf.variable_scope('subpixelconv_stage1'):
+            net = relate_conv(inputs_down, 64, 64, scope='conv')
+            net = pixelShuffler(net, scale=2)
+            net = prelu_tf(net)
+        with tf.variable_scope('subpixelconv_stage2'):
+            net = relate_conv(net, 64, 64, scope='conv')
+            net = pixelShuffler(net, scale=2)
+            net_down = prelu_tf(net)
+    net = tf.concat([tf.slice(net_top, [0, 0, 0, 0], [-1, 64, -1, -1]),
+                     tf.slice(net_down, [0, 4, 0, 0], [-1, -1, -1, -1])], axis=1)
+    with tf.variable_scope('output_stage'):
+        net = conv2(net, 9, gen_output_channels, 1, scope='conv')
+        net = tf.nn.tanh(net)
     return net
 
 
@@ -116,10 +157,10 @@ def discriminator(dis_inputs, is_training=True):
 
         # The dense layer 2
         with tf.variable_scope('dense_layer_2'):
-            net = denselayer(net, 1)
-            net = tf.nn.sigmoid(net)
+            logits = denselayer(net, 1)
+            prob = tf.nn.sigmoid(logits)
 
-    return net
+    return logits, prob
 
 # Definition of the discriminator use feature
 def discriminator_feature(dis_features, is_training=True):
