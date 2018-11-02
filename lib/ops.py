@@ -147,19 +147,25 @@ def compute_psnr(ref, target):
     v = tf.shape(diff)[0] * tf.shape(diff)[1] * tf.shape(diff)[2] * tf.shape(diff)[3]
     mse = err / tf.cast(v, tf.float32)
     psnr = 10. * (tf.log(255. * 255. / mse) / tf.log(10.))
-
     return psnr
 
 # Define the convolution block before the sub_pixel layer
 def subpixel_pre(batch_input, input_channel=64, output_channel=256, scope='conv'):
+    output_channel=int(output_channel/4)
     with tf.variable_scope(scope):
-        kernel = tf.get_variable('kernel', shape=[3, 3, input_channel, output_channel],
-                                 initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
-        kernel_split = tf.split(kernel, int(output_channel/4), axis=3)
-        kernel = tf.concat([kernel_norm(x) for x in kernel_split], axis=3)
-        # kernel_split = tf.split(kernel, int(output_channel/4), axis=3)
-        # for x in kernel_split:
-        #     kernel_constrain(x)
+        kernel_1 = tf.get_variable('kernel_1', shape=[3, 3, input_channel, output_channel],
+                                  initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
+        kernel_2 = tf.get_variable('kernel_2', initializer=kernel_1.initialized_value(), dtype=tf.float32)
+        kernel_3 = tf.get_variable('kernel_3', initializer=kernel_1.initialized_value(), dtype=tf.float32)
+        kernel_4 = tf.get_variable('kernel_4', initializer=kernel_1.initialized_value(), dtype=tf.float32)
+        kernel_1_split = tf.split(kernel_1, output_channel, axis=3)
+        kernel_2_split = tf.split(kernel_2, output_channel, axis=3)
+        kernel_3_split = tf.split(kernel_3, output_channel, axis=3)
+        kernel_4_split = tf.split(kernel_4, output_channel, axis=3)
+        kernel_concat = []
+        for i in range(output_channel):
+            kernel_concat = kernel_concat + [kernel_1_split[i], kernel_2_split[i], kernel_3_split[i], kernel_4_split[i]]
+        kernel = tf.concat(kernel_concat, axis=3)
         return tf.nn.conv2d(batch_input, kernel, strides=[1, 1, 1, 1], padding='SAME')
 
 def kernel_norm(kernel):
@@ -302,3 +308,45 @@ def interpolation_conv(batch_input, input_channel=64, output_channel=64, scope='
         with tf.control_dependencies([kernel]):
             net = tf.nn.conv2d(batch_input, kernel, strides=[1, 1, 1, 1], padding='SAME')
         return net
+
+
+
+
+def get_dist_matrix():
+    # distance matrix for blur process
+    kernel_radius = 3
+    kernel_size = int(np.ceil(6*kernel_radius))
+    kernel_size = kernel_size + 1 if kernel_size%2==0 else kernel_size
+    distance_matrix = np.zeros([kernel_size, kernel_size])
+    center = kernel_size/2
+    for i in range(kernel_size):
+        for j in range(kernel_size):
+            distance_matrix[i,j]= ((center-i)**2 + (center-j)**2)**.5
+    distance_matrix = np.expand_dims(distance_matrix,2)
+    distance_matrix = np.expand_dims(distance_matrix,3)
+    return distance_matrix
+
+def blur(image, sigma, device_id):
+    channel = image.shape[2]
+    dist = get_dist_matrix()
+    kernel = tf.exp(-dist/(2*sigma**2))
+    kernel = kernel/tf.reduce_sum(kernel)
+    image = tf.expand_dims(image,0)
+    image_split = tf.split(image, channel, axis=3)
+    with tf.device('/gpu:%d'%device_id):
+        processed = tf.concat([tf.nn.conv2d(x, kernel, [1, 1, 1, 1], 'SAME') for x in image_split], axis=3)
+        # processed = tf.nn.conv2d(image, kernel, [1,1,1,1], 'SAME')
+    processed = tf.squeeze(processed, axis=0)
+    return processed
+
+def random_blur(image, min_sigma, max_sigma, device_id, always=True):
+    def _random_adjust(image):
+        sigma = tf.random_uniform([], minval=min_sigma, maxval=max_sigma)
+        return blur(image, sigma, device_id)
+    if always:
+        return _random_adjust(image)
+    else:
+        rand_value = tf.random_uniform([])
+        rand_cond = tf.greater_equal(rand_value, 0.5)
+        return tf.cond(rand_cond, lambda: _random_adjust(image),
+                                  lambda: image)

@@ -4,11 +4,14 @@ import collections
 import glob
 import math
 import os
+import random
 
 import numpy as np
 import scipy.misc as sic
+import scipy.ndimage
 import tensorflow as tf
-from lib.ops import random_flip
+
+from lib.ops import random_flip, random_blur
 
 
 # Define the dataloader
@@ -35,17 +38,17 @@ def data_loader(FLAGS):
                         "image_raw": tf.FixedLenFeature([], tf.string)
                     }
                 )
-                # input_image_HR = tf.image.decode_png(features["image_raw"], channels=3)
+                # input_image_HR = tf.image.decode_jpeg(features["image_raw"], channels=3)
                 input_image_HR = tf.decode_raw(features["image_raw"], tf.uint8)
-                # print(input_image_HR)
                 # The image_shape must be explicitly specified
                 input_image_HR = tf.reshape(input_image_HR, hr_size)
-                input_image_LR = tf.cast(tf.image.resize_images(
-                    input_image_HR, lr_size), tf.uint8)
-                input_image_LR = tf.image.convert_image_dtype(
-                    input_image_LR, dtype=tf.float32)
                 input_image_HR = tf.image.convert_image_dtype(
                     input_image_HR, dtype=tf.float32)
+                input_image_LR = tf.image.resize_images(input_image_HR, lr_size)
+                # input_image_LR = tf.image.resize_images(
+                #     random_blur(input_image_HR, min_sigma=0.1, max_sigma=1.0, device_id=0, always=True), lr_size)
+                # input_image_LR = tf.image.convert_image_dtype(
+                #     input_image_LR, dtype=tf.float32)
             inputs, targets = [input_image_LR, input_image_HR]
         # The data augmentation part
         with tf.name_scope('data_preprocessing'):
@@ -62,6 +65,16 @@ def data_loader(FLAGS):
                 else:
                     input_images = tf.identity(inputs)
                     target_images = tf.identity(targets)
+            # with tf.variable_scope('random_blur'):
+            #     # input_images = tf.image.random_brightness(input_images, max_delta=0.5)
+            #     # target_images = tf.image.random_brightness(target_images, max_delta=0.5)
+            #     # input_images = tf.image.random_contrast(input_images, 0.1, 0.6)
+            #     # target_images = tf.image.random_contrast(target_images, 0.1, 0.6)
+            #     # input_images = tf.image.random_hue(input_images, 0.5)
+            #     # target_images = tf.image.random_hue(target_images, 0.5)
+            #     # input_images = tf.image.random_saturation(input_images, 0, 5)
+            #     # target_images = tf.image.random_saturation(target_images, 0, 5)
+            #     input_images = random_blur(input_images, min_sigma=1.0, max_sigma=3.0, device_id=0, always=True)
 
         inputs_batch, targets_batch = tf.train.shuffle_batch([input_images, target_images],
                                                              batch_size=FLAGS.batch_size, capacity=FLAGS.image_queue_capacity+4*FLAGS.batch_size,

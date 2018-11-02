@@ -42,21 +42,21 @@ def generator(gen_inputs, gen_output_channels, num_resblock=16, reuse=False, is_
         net = net + stage1_output
         with tf.variable_scope('subpixelconv_stage1'):
             # net = conv2(net, 3, 256, 1, scope='conv')
-            # net = subpixel_pre(net, input_channel=64, output_channel=256, scope='conv')
+            net = subpixel_pre(net, input_channel=64, output_channel=256, scope='conv')
             # net = relate_conv(net, 64, 64, scope='conv')
-            net = interpolation_conv(net, 64, 64, scope='conv')
+            # net = interpolation_conv(net, 64, 64, scope='conv')
             net = pixelShuffler(net, scale=2)
             net = prelu_tf(net)
         with tf.variable_scope('subpixelconv_stage2'):
             # net = conv2(net, 3, 256, 1, scope='conv')
-            # net = subpixel_pre(net, input_channel=64, output_channel=256, scope='conv')
+            net = subpixel_pre(net, input_channel=64, output_channel=256, scope='conv')
             # net = relate_conv(net, 64, 64, scope='conv')
-            net = interpolation_conv(net, 64, 64, scope='conv')
+            # net = interpolation_conv(net, 64, 64, scope='conv')
             net = pixelShuffler(net, scale=2)
             net = prelu_tf(net)
         with tf.variable_scope('output_stage'):
             net = conv2(net, 9, gen_output_channels, 1, scope='conv')
-            net = tf.nn.tanh(net)
+            # net = tf.nn.tanh(net)
     return net
 
 # Definition of the generator

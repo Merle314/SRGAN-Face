@@ -7,7 +7,7 @@ import os
 import numpy as np
 import scipy.misc as sic
 import tensorflow as tf
-from lib.model_gan import generator, discriminator, generator_split
+from lib.model_gan import generator, discriminator
 # from lib.model_dense import generatorDense as generator
 # from lib.model_dense import discriminatorDense as discriminator
 from lib.model_vgg19 import VGG19_slim
@@ -93,21 +93,21 @@ def SRGAN(inputs, targets, FLAGS):
                 content_loss = FLAGS.perceptual_scaling*tf.reduce_mean(tf.reduce_sum(tf.square(diff), axis=[3]))
 
         with tf.variable_scope('adversarial_loss'):
-            # adversarial_loss = tf.reduce_mean(-tf.log(discrim_fake_output + FLAGS.EPS))
+            adversarial_loss = tf.reduce_mean(-tf.log(discrim_fake_prob + FLAGS.EPS))
             # adversarial_loss = tf.reduce_mean(tf.square(discrim_fake_output))
-            adversarial_loss = tf.reduce_mean(-(tf.log(relative_fake_prob+FLAGS.EPS)+tf.log(1-relative_real_prob+FLAGS.EPS)))
+            # adversarial_loss = tf.reduce_mean(-(tf.log(relative_fake_prob+FLAGS.EPS)+tf.log(1-relative_real_prob+FLAGS.EPS)))
         # print(tf.get_collection('regular_loss'))
         gen_loss = content_loss + (FLAGS.ratio)*adversarial_loss# + tf.add_n(tf.get_collection('regular_loss'))
 
     # Calculating the discriminator loss
     with tf.variable_scope('discriminator_loss'):
-        # discrim_fake_loss = tf.log(1 - discrim_fake_output + FLAGS.EPS)
-        # discrim_real_loss = tf.log(discrim_real_output + FLAGS.EPS)
-        # discrim_loss = tf.reduce_mean(-(discrim_fake_loss + discrim_real_loss))
+        discrim_fake_loss = tf.log(1 - discrim_fake_prob + FLAGS.EPS)
+        discrim_real_loss = tf.log(discrim_real_prob + FLAGS.EPS)
+        discrim_loss = tf.reduce_mean(-(discrim_fake_loss + discrim_real_loss))
         # discrim_fake_loss = tf.square(discrim_fake_output+1)
         # discrim_real_loss = tf.square(discrim_real_output-1)
         # discrim_loss = tf.reduce_mean(discrim_fake_loss) + tf.reduce_mean(discrim_real_loss)
-        discrim_loss = tf.reduce_mean(-(tf.log(relative_real_prob+FLAGS.EPS)+tf.log(1-relative_fake_prob+FLAGS.EPS)))
+        # discrim_loss = tf.reduce_mean(-(tf.log(relative_real_prob+FLAGS.EPS)+tf.log(1-relative_fake_prob+FLAGS.EPS)))
 
     # Define the learning rate and global step
     with tf.variable_scope('get_learning_rate_and_global_step'):

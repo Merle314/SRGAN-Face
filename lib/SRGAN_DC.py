@@ -7,7 +7,7 @@ import os
 import numpy as np
 import scipy.misc as sic
 import tensorflow as tf
-from lib.model_gan import generator, discriminator, discriminator_feature, discriminator_emb
+from lib.model_gan import generator, discriminator, discriminator_feature
 # from lib.model_dense import generatorDense as generator
 # from lib.model_dense import discriminatorDense as discriminator
 from lib.model_vgg19 import VGG19_slim
